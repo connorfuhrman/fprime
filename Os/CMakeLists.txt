@@ -43,7 +43,6 @@ if (FPRIME_USE_POSIX)
         "${CMAKE_CURRENT_LIST_DIR}/Pthreads/PriorityBufferQueue.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Pthreads/MaxHeap/MaxHeap.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Linux/File.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/Posix/Task.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Linux/InterruptLock.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Linux/WatchdogTimer.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Posix/IntervalTimer.cpp"
@@ -51,7 +50,15 @@ if (FPRIME_USE_POSIX)
         "${CMAKE_CURRENT_LIST_DIR}/Linux/FileSystem.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Posix/TaskId.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/Linux/Directory.cpp"
-    )
+      )
+      if (FPRIME_USE_JULIA_THREADS)
+	list(APPEND SOURCE_FILES
+	  "${CMAKE_CURRENT_LIST_DIR}/Julia/Task.cpp")
+		
+      else()
+	list(APPEND SOURCE_FILES
+	  "${CMAKE_CURRENT_LIST_DIR}/Posix/Task.cpp")
+      endif()
 endif()
 # Darwin IPC queue implementation
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
@@ -87,6 +94,40 @@ if (FPRIME_USE_BAREMETAL_SCHEDULER)
 endif()
 register_fprime_module()
 
+if (FPRIME_USE_JULIA_THREADS)
+  # Find the required julia and jluna dependencies
+  set(REQUIRED_ENV_VARS
+    JLUNA_INSTALL_DIR
+    JLUNA_INCLUDE_DIR
+    JULIA_BIN_DIR
+    JULIA_LIB_DIR
+    JULIA_INCLUDE_DIR)
+
+  foreach(var IN LISTS REQUIRED_ENV_VARS)
+    if (NOT DEFINED ENV{${var}})
+      message(FATAL_ERROR "${var} env variable must be set to enable Julia threads!")
+    endif()
+    message(STATUS "${var} = $ENV{${var}}")
+  endforeach()
+
+  find_library(jluna REQUIRED
+    NAMES jluna
+    PATHS ENV JLUNA_INSTALL_DIR)
+
+  find_library(julia REQUIRED
+    NAMES julia
+    PATHS ENV JULIA_LIB_DIR)
+
+  target_link_libraries(Os PRIVATE
+    ${jluna}
+    ${julia})
+  target_include_directories(Os SYSTEM PRIVATE
+    $ENV{JULIA_INCLUDE_DIR}
+    $ENV{JLUNA_INCLUDE_DIR})
+  
+  set_property(TARGET Os PROPERTY CXX_STANDARD 20)
+endif()
+
 # Add stubs directory for testing builds
 if (BUILD_TESTING)
     add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Stubs/")
@@ -99,6 +140,7 @@ set(UT_SOURCE_FILES
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/IntervalTimerTest.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsValidateFileTest.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsTaskTest.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsJuliaTaskTest.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsFileSystemTest.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsSystemResourcesTest.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/OsMutexBasicLockableTest.cpp"
@@ -116,3 +158,15 @@ set(UT_SOURCE_FILES
   "${CMAKE_CURRENT_LIST_DIR}/Pthreads/MaxHeap/test/ut/MaxHeapTest.cpp"
 )
 register_fprime_ut("Os_pthreads_max_heap")
+
+
+if(FPRIME_USE_JULIA_THREADS)
+  target_link_libraries(Os_ut_exe PRIVATE
+    ${jluna}
+    ${julia})
+  target_include_directories(Os_ut_exe SYSTEM PRIVATE
+    $ENV{JULIA_INCLUDE_DIR}
+    $ENV{JLUNA_INCLUDE_DIR})
+  
+  set_property(TARGET Os_ut_exe PROPERTY CXX_STANDARD 20)
+endif()

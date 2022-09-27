@@ -5,6 +5,7 @@
 
 extern "C" {
   void startTestTask();
+  void startJuliaTaskTest();
   void qtest_block_receive();
   void qtest_nonblock_receive();
   void qtest_nonblock_send();
@@ -19,7 +20,10 @@ extern "C" {
 }
 const char* filename;
 TEST(Nominal, StartTestTask) {
-   startTestTask();
+  startTestTask();
+}
+TEST(Nominal, StartJuliaTaskTest) {
+    startJuliaTaskTest();
 }
 TEST(Nominal, QTestBlockRecv) {
    qtest_block_receive();
