@@ -160,7 +160,7 @@ set(UT_SOURCE_FILES
 register_fprime_ut("Os_pthreads_max_heap")
 
 
-if(FPRIME_USE_JULIA_THREADS)
+if(FPRIME_USE_JULIA_THREADS AND BUILD_TESTING)
   target_link_libraries(Os_ut_exe PRIVATE
     ${jluna}
     ${julia})
